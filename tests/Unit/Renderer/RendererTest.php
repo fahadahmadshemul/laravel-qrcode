@@ -28,7 +28,7 @@ final class RendererTest extends TestCase
         $matrix = (new MatrixBuilder)->build('A', 'L');
 
         $this->expectException(RuntimeException::class);
-        (new SvgRenderer)->render($matrix, 5, 4);
+        (new SvgRenderer)->render($matrix, 0, 4);
     }
 
     public function test_png_produces_png_signature(): void

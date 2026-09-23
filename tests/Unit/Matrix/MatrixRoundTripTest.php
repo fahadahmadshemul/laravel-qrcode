@@ -21,7 +21,7 @@ final class MatrixRoundTripTest extends TestCase
 {
     public function test_finished_matrix_round_trips_to_the_original_codewords(): void
     {
-        $payload = 'HELLO WORLD';
+        $payload = 'Hello World';
         $matrix = (new MatrixBuilder)->build($payload, 'M');
 
         // --- 1. Read back the format information (copy 1). ---
@@ -81,8 +81,7 @@ final class MatrixRoundTripTest extends TestCase
         for ($i = 0; $i <= 7; $i++) {
             $bits |= ($matrix->get($size - 1 - $i, 8) === true ? 1 : 0) << $i;
         }
-        $bits |= ($matrix->get(8, $size - 8) === true ? 1 : 0) << 8;
-        for ($i = 9; $i <= 14; $i++) {
+        for ($i = 8; $i <= 14; $i++) {
             $bits |= ($matrix->get(8, $size - 15 + $i) === true ? 1 : 0) << $i;
         }
 

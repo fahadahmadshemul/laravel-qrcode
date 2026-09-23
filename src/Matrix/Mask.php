@@ -141,10 +141,14 @@ final class Mask
             }
         }
 
-        $percent = intdiv($dark * 100, $total);
-        $deviation = abs($percent - 50);
+        if ($total === 0) {
+            return 0;
+        }
 
-        return intdiv($deviation + 4, 5) * 10;
+        $percent = ($dark / $total) * 100;
+        $rating = (int) (abs($percent - 50) / 5);
+
+        return $rating * 10;
     }
 
     /**

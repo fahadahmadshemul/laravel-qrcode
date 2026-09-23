@@ -37,7 +37,7 @@ final class ReedSolomon
             return [];
         }
 
-        $generator = $this->generator($eccCodewordCount);
+        $generator = $this->generatorPolynomial($eccCodewordCount);
         $dataCount = count($data);
 
         // Work on the message polynomial followed by $eccCodewordCount
@@ -107,9 +107,12 @@ final class ReedSolomon
      * The generator polynomial ∏(x - α^i) for i in [0, count),
      * coefficients highest degree first, monic.
      *
+     * Exposed for testing and for callers that need the QR-spec generator
+     * polynomial directly (e.g. degrees 7, 10, 13, 17 for Version 1).
+     *
      * @return int[]
      */
-    private function generator(int $count): array
+    public function generatorPolynomial(int $count): array
     {
         $polynomial = [1];
 
@@ -130,7 +133,7 @@ final class ReedSolomon
      * @param  int[]  $b
      * @return int[]
      */
-    private function multiplyPolynomials(array $a, array $b): array
+    public function multiplyPolynomials(array $a, array $b): array
     {
         $result = array_fill(0, count($a) + count($b) - 1, 0);
 

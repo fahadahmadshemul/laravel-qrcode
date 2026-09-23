@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace Fahad\QrCode\Exceptions;
 
-final class QrCodeOverflowException extends QrCodeException
+/**
+ * Exception raised when the payload exceeds the capacity of the supported QR versions.
+ */
+class QrCodeOverflowException extends QrCodeException
 {
-    public static function forVersion(int $version, string $level, int $length, int $capacity): static
+    public static function payloadTooLarge(int $bytes, int $version, string $level, int $maxCapacity): static
     {
-        return new self(sprintf(
+        return new static(sprintf(
             'Payload of %d bytes exceeds Version %d byte-mode capacity at ECC level %s (%d bytes max).',
-            $length,
+            $bytes,
             $version,
             $level,
-            $capacity
+            $maxCapacity
         ));
     }
 }

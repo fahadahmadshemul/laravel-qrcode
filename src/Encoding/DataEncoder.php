@@ -7,99 +7,152 @@ namespace Fahad\QrCode\Encoding;
 use Fahad\QrCode\ErrorCorrection\ErrorCorrectionLevel;
 use Fahad\QrCode\ErrorCorrection\ReedSolomon;
 use Fahad\QrCode\Exceptions\QrCodeOverflowException;
+use Fahad\QrCode\Matrix\VersionSpec;
+use Fahad\QrCode\Matrix\VersionTable;
 
-/**
- * The Version 1 data pipeline for byte mode.
- *
- * Builds the segment bit stream exactly per ISO/IEC 18004:
- *
- *   mode indicator (4) + character count (8) + data (8/char)
- *   + terminator (up to 4 zero bits) + pad to byte boundary
- *   + pad codewords (0xEC 0x11 alternating) + Reed–Solomon ECC
- *
- * Version 1 is a single block, so interleaving is a simple concatenation.
- *
- * This class is part of the framework-agnostic QR engine and must not
- * depend on Laravel.
- */
 final class DataEncoder
 {
-    private const BYTE_MODE = 0b0100;
-
-    public function __construct(
-        private readonly ReedSolomon $reedSolomon = new ReedSolomon,
-    ) {}
-
     /**
-     * Build the final codeword sequence for the payload at the given
-     * error correction level.
+     * Encode payload data into interleaved data and ECC codewords for a given version, ECC level, and encoding mode.
      *
-     * @param  string  $data  Raw payload (UTF-8 bytes)
-     * @param  string  $level  ECC level: L, M, Q or H
-     * @return int[] Final codewords (data + ECC), each an unsigned byte
+     * @return list<int>
      */
-    public function encode(string $data, string $level): array
-    {
-        $level = ErrorCorrectionLevel::fromName($level);
-        $dataBits = $this->buildDataBits($data, $level);
-        $dataCodewords = $this->toCodewords($dataBits, $level->dataCodewords());
-        $eccCodewords = $this->reedSolomon->encodeBlock($dataCodewords, $level->eccCodewords());
+    public function encode(
+        string $data,
+        string $level,
+        ?VersionSpec $version = null,
+        EncodingMode|string|null $mode = null
+    ): array {
+        $eccLevel = ErrorCorrectionLevel::fromName($level);
+        $encodingMode = EncodingMode::resolve($mode ?? EncodingMode::Auto, $data);
+        $encodingMode->validatePayload($data);
 
-        return $this->reedSolomon->interleave([$dataCodewords], [$eccCodewords]);
+        $versionSpec = $version ?? VersionTable::forPayload($data, $eccLevel, $encodingMode);
+        $blockSpec = $versionSpec->eccSpec($eccLevel);
+
+        if (! $versionSpec->canFit($data, $eccLevel, $encodingMode)) {
+            throw QrCodeOverflowException::payloadTooLarge(
+                strlen($data),
+                $versionSpec->number,
+                $eccLevel->name,
+                $versionSpec->byteCapacity($eccLevel)
+            );
+        }
+
+        // 1. Bitstream assembly
+        $bits = [];
+
+        // Mode indicator
+        $this->pushBits($bits, $encodingMode->modeIndicator(), 4);
+
+        // Character count indicator
+        $charCount = strlen($data);
+        $countBits = $versionSpec->characterCountBits($encodingMode);
+        $this->pushBits($bits, $charCount, $countBits);
+
+        // Payload bits
+        match ($encodingMode) {
+            EncodingMode::Numeric => $this->encodeNumericPayload($bits, $data),
+            EncodingMode::Alphanumeric => $this->encodeAlphanumericPayload($bits, $data),
+            EncodingMode::Byte, EncodingMode::Auto => $this->encodeBytePayload($bits, $data),
+        };
+
+        // Terminator (up to 4 zero bits)
+        $totalDataBits = $blockSpec->dataCodewords * 8;
+        $neededTerminator = min(4, $totalDataBits - count($bits));
+        if ($neededTerminator > 0) {
+            $this->pushBits($bits, 0, $neededTerminator);
+        }
+
+        // Pad to byte boundary
+        while (count($bits) % 8 !== 0) {
+            $bits[] = 0;
+        }
+
+        // Convert bits to data codewords
+        $dataCodewords = [];
+        foreach (array_chunk($bits, 8) as $byteBits) {
+            $value = 0;
+            foreach ($byteBits as $bit) {
+                $value = ($value << 1) | $bit;
+            }
+            $dataCodewords[] = $value;
+        }
+
+        // Pad with alternating 236 (0xEC) and 17 (0x11) up to total data codewords
+        $padBytes = [0xEC, 0x11];
+        $padIndex = 0;
+        while (count($dataCodewords) < $blockSpec->dataCodewords) {
+            $dataCodewords[] = $padBytes[$padIndex % 2];
+            $padIndex++;
+        }
+
+        // 2. Split data codewords into blocks and compute Reed-Solomon ECC for each block
+        $rs = new ReedSolomon();
+        $blockDataCounts = $blockSpec->blockDataCounts();
+        $blocksData = [];
+        $blocksEcc = [];
+
+        $offset = 0;
+        foreach ($blockDataCounts as $count) {
+            $blockData = array_slice($dataCodewords, $offset, $count);
+            $offset += $count;
+
+            $ecc = $rs->encodeBlock($blockData, $blockSpec->eccPerBlock);
+
+            $blocksData[] = $blockData;
+            $blocksEcc[] = $ecc;
+        }
+
+        // 3. Interleave data and ECC codewords across blocks
+        return $rs->interleave($blocksData, $blocksEcc);
     }
 
-    /**
-     * The complete data bit stream (mode + count + data), with the payload
-     * length validated against the Version 1 byte-mode capacity.
-     */
-    private function buildDataBits(string $data, ErrorCorrectionLevel $level): BitBuffer
+    private function encodeNumericPayload(array &$bits, string $data): void
     {
         $length = strlen($data);
-
-        if ($length > $level->byteCapacity()) {
-            throw QrCodeOverflowException::forVersion(1, $level->value, $length, $level->byteCapacity());
+        for ($i = 0; $i < $length; $i += 3) {
+            $chunk = substr($data, $i, 3);
+            $chunkLen = strlen($chunk);
+            $val = (int) $chunk;
+            $bitLen = match ($chunkLen) {
+                3 => 10,
+                2 => 7,
+                default => 4,
+            };
+            $this->pushBits($bits, $val, $bitLen);
         }
-
-        $buffer = new BitBuffer;
-        $buffer->append(self::BYTE_MODE, 4);
-        $buffer->append($length, 8);
-
-        foreach (unpack('C*', $data) ?: [] as $byte) {
-            $buffer->append($byte, 8);
-        }
-
-        return $buffer;
     }
 
-    /**
-     * Terminator, bit padding to the codeword boundary, then alternating
-     * 0xEC / 0x11 pad codewords up to the exact data-codeword count.
-     *
-     * @return int[]
-     */
-    private function toCodewords(BitBuffer $buffer, int $totalDataCodewords): array
+    private function encodeAlphanumericPayload(array &$bits, string $data): void
     {
-        $capacityBits = $totalDataCodewords * 8;
-
-        // Terminator: up to four zero bits, truncated if fewer remain.
-        $terminatorBits = min(4, $capacityBits - $buffer->length());
-        $buffer->append(0, $terminatorBits);
-
-        // Pad to a byte boundary.
-        while ($buffer->length() % 8 !== 0) {
-            $buffer->append(0, 1);
+        $length = strlen($data);
+        for ($i = 0; $i < $length; $i += 2) {
+            $chunk = substr($data, $i, 2);
+            if (strlen($chunk) === 2) {
+                $v1 = EncodingMode::ALPHANUMERIC_CHAR_MAP[$chunk[0]];
+                $v2 = EncodingMode::ALPHANUMERIC_CHAR_MAP[$chunk[1]];
+                $val = $v1 * 45 + $v2;
+                $this->pushBits($bits, $val, 11);
+            } else {
+                $v1 = EncodingMode::ALPHANUMERIC_CHAR_MAP[$chunk[0]];
+                $this->pushBits($bits, $v1, 6);
+            }
         }
+    }
 
-        $codewords = $buffer->toBytes();
-
-        // Alternating pad codewords fill the remaining data codewords,
-        // always starting with 0xEC regardless of position.
-        $padStart = count($codewords);
-
-        for ($i = $padStart; $i < $totalDataCodewords; $i++) {
-            $codewords[] = ($i - $padStart) % 2 === 0 ? 0xEC : 0x11;
+    private function encodeBytePayload(array &$bits, string $data): void
+    {
+        $length = strlen($data);
+        for ($i = 0; $i < $length; $i++) {
+            $this->pushBits($bits, ord($data[$i]), 8);
         }
+    }
 
-        return $codewords;
+    private function pushBits(array &$bits, int $value, int $length): void
+    {
+        for ($i = $length - 1; $i >= 0; $i--) {
+            $bits[] = ($value >> $i) & 1;
+        }
     }
 }

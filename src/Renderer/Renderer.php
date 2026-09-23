@@ -15,7 +15,13 @@ interface Renderer
     /**
      * Render the matrix into its output representation.
      */
-    public function render(QrMatrix $matrix, int $size, int $margin): string;
+    public function render(
+        QrMatrix $matrix,
+        int $size,
+        int $margin,
+        string $foregroundColor = '#000000',
+        string $backgroundColor = '#ffffff'
+    ): string;
 
     /**
      * The output format identifier, e.g. "svg" or "png".

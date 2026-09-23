@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fahad\QrCode;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 
 class QrCodeServiceProvider extends ServiceProvider
@@ -15,6 +16,8 @@ class QrCodeServiceProvider extends ServiceProvider
         $this->app->singleton('qrcode', fn (): QrCode => new QrCode(
             $this->app->make('config')->get('qrcode', [])
         ));
+
+        $this->app->alias('qrcode', QrCode::class);
     }
 
     public function boot(): void
@@ -23,6 +26,17 @@ class QrCodeServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/qrcode.php' => config_path('qrcode.php'),
             ], 'qrcode-config');
+        }
+
+        $this->registerBladeDirective();
+    }
+
+    protected function registerBladeDirective(): void
+    {
+        if (class_exists(Blade::class)) {
+            Blade::directive('qrcode', function (string $expression): string {
+                return "<?php echo \\Fahad\\QrCode\\Facades\\QrCode::renderFromBlade({$expression}); ?>";
+            });
         }
     }
 

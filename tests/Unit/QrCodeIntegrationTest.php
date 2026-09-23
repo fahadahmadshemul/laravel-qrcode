@@ -63,7 +63,8 @@ final class QrCodeIntegrationTest extends TestCase
     {
         $this->expectException(QrCodeOverflowException::class);
 
-        QrCode::make(str_repeat('A', 15))->errorCorrection('H')->generate();
+        // 1300 bytes exceeds Version 40 max capacity at Level H in Byte mode (1273 bytes max)
+        QrCode::make(str_repeat('a', 1300))->errorCorrection('H')->generate();
     }
 
     public function test_empty_data_throws(): void

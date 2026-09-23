@@ -29,10 +29,10 @@ enum MaskPattern: int
             self::Pattern1 => $y % 2 === 0,
             self::Pattern2 => $x % 3 === 0,
             self::Pattern3 => ($x + $y) % 3 === 0,
-            self::Pattern4 => (intdiv($x, 3) + intdiv($y, 2)) % 2 === 0,
-            self::Pattern5 => ($x * $y) % 2 + ($x * $y) % 3 === 0,
-            self::Pattern6 => (($x * $y) % 2 + ($x * $y) % 3) % 2 === 0,
-            self::Pattern7 => (($x + $y) % 2 + ($x * $y) % 3) % 2 === 0,
+            self::Pattern4 => (intdiv($y, 2) + intdiv($x, 3)) % 2 === 0,
+            self::Pattern5 => (($x * $y) % 2 + ($x * $y) % 3) === 0,
+            self::Pattern6 => ((($x * $y) % 2 + ($x * $y) % 3) % 2) === 0,
+            self::Pattern7 => ((($x + $y) % 2 + ($x * $y) % 3) % 2) === 0,
         };
     }
 }
