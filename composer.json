@@ -1,0 +1,67 @@
+{
+    "name": "fahad/laravel-qrcode",
+    "description": "Self-contained QR code generator for Laravel with the QR encoding engine implemented from scratch - no third-party QR libraries.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "qrcode",
+        "qr-code",
+        "qr",
+        "generator",
+        "reed-solomon"
+    ],
+    "authors": [
+        {
+            "name": "Md. Fahad Hossain",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/fahad/laravel-qrcode/issues",
+        "source": "https://github.com/fahad/laravel-qrcode"
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.13",
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpstan/phpstan": "^1.10|^2.0",
+        "phpunit/phpunit": "^10.5|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fahad\\QrCode\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fahad\\QrCode\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "@php vendor/bin/phpunit --colors=always",
+        "analyse": "@php vendor/bin/phpstan analyse --memory-limit=512M",
+        "format": "@php vendor/bin/pint",
+        "format:test": "@php vendor/bin/pint --test"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Fahad\\QrCode\\QrCodeServiceProvider"
+            ],
+            "aliases": {
+                "QrCode": "Fahad\\QrCode\\Facades\\QrCode"
+            }
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
+
