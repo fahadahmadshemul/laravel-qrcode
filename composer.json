@@ -18,8 +18,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/fahad/laravel-qrcode/issues",
-        "source": "https://github.com/fahad/laravel-qrcode"
+        "issues": "https://github.com/fahadahmadshemul/laravel-qrcode/issues",
+        "source": "https://github.com/fahadahmadshemul/laravel-qrcode"
     },
     "require": {
         "php": "^8.2",
