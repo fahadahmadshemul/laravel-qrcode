@@ -1,20 +1,32 @@
-# fahad/laravel-qrcode
+# Laravel QrCode
 
-A self-contained, production-quality QR code generator for Laravel.
+A self-contained QR code generator for Laravel. The entire QR encoding
+pipeline — data encoding, Reed–Solomon error correction, matrix construction,
+masking and rendering — is implemented from scratch in this package. It has
+**no third-party QR libraries** in its runtime dependencies.
 
-The complete QR encoding engine — mode selection, data encoding, Reed–Solomon
-error correction, matrix construction and masking — is implemented **inside
-this package** with a clean OOP architecture. No third-party QR-code libraries
-(such as `simplesoftwareio/simple-qrcode` or `endroid/qr-code`) are used.
+## Features
 
-> **Status:** scaffolding phase. This repository currently contains the package
-> structure, QA tooling and CI. The QR engine, renderers and Laravel integration
-> land in the upcoming milestones — see [Roadmap](#roadmap).
+- Pure-PHP QR engine written from scratch (ISO/IEC 18004), no external QR
+  dependencies at runtime.
+- SVG output (always available) and PNG output (via the GD extension).
+- Full QR **Version 1–40** support with automatic version selection.
+- All four error correction levels: **L, M, Q, H**.
+- Numeric, alphanumeric and byte encoding modes, with automatic mode detection.
+- UTF-8 ECI support so multibyte payloads (e.g. Bangla, Arabic, CJK, emoji)
+  decode back to the original text.
+- Fluent, chainable builder with a Laravel facade.
+- Configurable size, quiet-zone margin, and foreground/background colors
+  (including a transparent background).
+- Save to a file, return a Base64 / data-URI string, or return an HTTP response.
+- `@qrcode` Blade directive.
+- Laravel auto-discovery; supports Laravel 9 through 13.
 
 ## Requirements
 
-- PHP **8.2+**
-- Laravel **10**, **11** or **12** (the QR engine itself is framework-agnostic)
+- PHP **8.2** or higher
+- `illuminate/support` `^9.0 | ^10.0 | ^11.0 | ^12.0 | ^13.0`
+- **ext-gd** — only required for PNG output. SVG works without it.
 
 ## Installation
 
@@ -22,95 +34,232 @@ this package** with a clean OOP architecture. No third-party QR-code libraries
 composer require fahad/laravel-qrcode
 ```
 
-The service provider and `QrCode` facade are registered automatically through
-Laravel package discovery. The configuration file can be published with:
+## Laravel auto-discovery
+
+The package registers itself automatically through Laravel's package
+discovery — no manual setup is required. It provides:
+
+- Service provider: `Fahad\QrCode\QrCodeServiceProvider`
+- Facade alias: `QrCode` → `Fahad\QrCode\Facades\QrCode`
+
+To customize the defaults, publish the config file:
 
 ```bash
 php artisan vendor:publish --tag=qrcode-config
 ```
 
-## Usage
+This publishes `config/qrcode.php` (size, margin, format, error correction,
+and ECI defaults).
+
+## Basic usage
+
+Use the facade and chain builder methods, then call `generate()`:
 
 ```php
 use Fahad\QrCode\Facades\QrCode;
 
-// SVG markup (default format)
-$svg = QrCode::make('https://example.com')
-    ->size(300)
-    ->margin(4)
-    ->format('svg')
-    ->errorCorrection('M')
-    ->generate();
-
-// PNG binary
-$png = QrCode::make('https://example.com')
-    ->format('png')
-    ->size(290)
-    ->generate();
+$svg = QrCode::make('https://example.com')->generate();
 ```
 
-Defaults live in `config/qrcode.php`: `size` (300), `margin` (4),
-`format` (`svg`) and `error_correction` (`M`).
-
-### Current scope
-
-Version **1** QR symbols only (21×21 modules), byte mode, UTF-8 payloads and
-all four error correction levels (L, M, Q, H). Version 1 byte-mode capacity is
-17 bytes at level L, 14 at M, 11 at Q and 7 at H; larger payloads raise
-`QrCodeOverflowException` until higher versions are implemented.
-
-### Using the engine without Laravel
-
-The QR engine has no Laravel dependency:
+The builder is also directly instantiable (and container-resolvable) without
+the facade:
 
 ```php
-use Fahad\QrCode\Matrix\MatrixBuilder;
-use Fahad\QrCode\Renderer\SvgRenderer;
+use Fahad\QrCode\QrCode;
 
-$matrix = (new MatrixBuilder)->build('https://example.com', 'M');
-$svg = (new SvgRenderer)->render($matrix, 300, 4);
+$svg = (new QrCode)->make('https://example.com')->generate();
 ```
+
+Because the builder implements `Stringable`, casting it to a string generates
+the code as well:
+
+```php
+$svg = (string) QrCode::make('https://example.com');
+```
+
+## SVG generation
+
+SVG is the default format. Output is a compact, standalone XML document using a
+single `<path>` element for all modules, with `shape-rendering="crispEdges"`.
+
+```php
+$svg = QrCode::make('https://example.com')
+    ->format('svg')   // or ->svg()
+    ->size(300)
+    ->generate();
+```
+
+## PNG generation
+
+PNG requires the GD extension. The requested pixel size is rounded down to a
+whole number of modules, and rendered dimensions are capped at 5000px to
+prevent excessive memory allocation.
+
+```php
+$png = QrCode::make('https://example.com')
+    ->format('png')   // or ->png()
+    ->size(512)
+    ->generate();
+```
+
+## Error correction
+
+Choose a level with `errorCorrection()`. Higher levels tolerate more damage at
+the cost of larger symbols. An invalid level throws
+`InvalidErrorCorrectionLevelException`.
+
+| Level | Recovery |
+|-------|----------|
+| `L`   | ~7%      |
+| `M`   | ~15% (default) |
+| `Q`   | ~25%     |
+| `H`   | ~30%     |
+
+```php
+$svg = QrCode::make('https://example.com')
+    ->errorCorrection('H')
+    ->generate();
+```
+
+## Size and margin
+
+`size()` sets the image side length in pixels; `margin()` sets the quiet-zone
+width measured in modules (default 4).
+
+```php
+$svg = QrCode::make('https://example.com')
+    ->size(400)
+    ->margin(2)
+    ->generate();
+```
+
+## Colors
+
+Set foreground and background colors independently, or both at once with
+`color()`. Hex codes and a set of named colors (black, white, red, green,
+blue, yellow, cyan, magenta, gray/grey) are supported for both formats; SVG
+additionally accepts any color string valid as an SVG `fill`. A background of
+`transparent` (or `none`) omits the background entirely.
+
+```php
+QrCode::make('https://example.com')
+    ->foregroundColor('#1a1a2e')     // or ->foreground(...)
+    ->backgroundColor('#ffffff')     // or ->background(...)
+    ->generate();
+
+// Shorthand: foreground, then optional background
+QrCode::make('https://example.com')->color('#000000', 'transparent')->generate();
+```
+
+## File saving
+
+`save()` writes the rendered code to disk, creating parent directories as
+needed. It throws `FileWriteException` on failure.
+
+```php
+QrCode::make('https://example.com')
+    ->png()
+    ->save(storage_path('app/qrcodes/example.png'));
+```
+
+## Base64
+
+`base64()` returns the encoded code. By default it prefixes a data URI (using
+the format's content type); pass `false` for the raw Base64 string.
+
+```php
+$dataUri = QrCode::make('https://example.com')->png()->base64();
+// data:image/png;base64,iVBORw0KGgo...
+
+$raw = QrCode::make('https://example.com')->svg()->base64(false);
+```
+
+## HTTP response
+
+`response()` returns an `Illuminate\Http\Response` with the correct
+`Content-Type`. The builder also implements `Responsable`, so you can return it
+directly from a controller.
+
+```php
+use Fahad\QrCode\Facades\QrCode;
+
+Route::get('/qr', function () {
+    return QrCode::make('https://example.com')->png()->response();
+});
+
+// Or, relying on the Responsable contract:
+Route::get('/qr', fn () => QrCode::make('https://example.com')->svg());
+```
+
+## Blade directive
+
+The `@qrcode` directive renders a QR code inline (best suited to SVG). It
+accepts the payload and an optional options array.
+
+```blade
+@qrcode('https://example.com')
+
+@qrcode($url, ['size' => 400, 'margin' => 2, 'error_correction' => 'H'])
+```
+
+Supported option keys: `size`, `margin`, `format`, `error_correction`,
+`foreground_color` / `color`, `background_color` / `background`,
+`encoding_mode` / `mode`, and `eci`.
+
+## Supported QR versions
+
+All **40 versions** (1 through 40) defined by ISO/IEC 18004 are supported,
+from a 21×21 module symbol (Version 1) up to 177×177 (Version 40). The
+smallest version that fits the payload at the chosen error correction level is
+selected automatically. Payloads exceeding Version 40 capacity throw
+`QrCodeOverflowException`.
+
+## Supported encoding modes
+
+Set the mode with `encodingMode()` (alias `mode()`), or leave it on `auto`:
+
+- **Numeric** — digits `0–9`.
+- **Alphanumeric** — digits, uppercase `A–Z`, space, and `$ % * + - . / :`.
+- **Byte** — any binary / UTF-8 string.
+- **Auto** (default) — detects the most efficient valid mode for the payload.
+
+```php
+QrCode::make('12345')->mode('numeric')->generate();
+```
+
+For multibyte byte-mode payloads, a UTF-8 ECI header is declared automatically.
+Control it with `eci(true|false|null)`, where `null` is automatic.
+
+## Testing
+
+```bash
+composer test          # PHPUnit test suite
+composer analyse       # PHPStan (level 8)
+composer format        # Laravel Pint (auto-fix)
+composer format:test   # Laravel Pint (check only)
+```
+
+The suite covers the encoding pipeline, error correction, every version/ECC
+combination, rendering, and the public API. Integration tests decode the
+generated codes with a third-party decoder (a dev-only dependency) to confirm
+they are readable.
 
 ## Architecture
 
-The package is deliberately split into small, single-responsibility classes —
-no monolithic implementation:
+The QR engine is framework-agnostic and organized into focused namespaces:
 
-| Namespace                   | Responsibility                                                                                |
-|-----------------------------|-----------------------------------------------------------------------------------------------|
-| `Fahad\QrCode\Contracts`    | Public builder contract.                                                                      |
-| `Fahad\QrCode\Encoding`     | Bit buffer, mode encoders and the byte-mode data pipeline (mode, count, terminator, padding).  |
-| `Fahad\QrCode\ErrorCorrection` | GF(2^8) arithmetic, Reed–Solomon ECC, Version 1 level tables.                              |
-| `Fahad\QrCode\Matrix`       | Matrix storage, finder/timing/format placement, data placement, masking, assembly pipeline.    |
-| `Fahad\QrCode\Renderer`     | Output targets: SVG and PNG.                                                                  |
-| `Fahad\QrCode\Exceptions`   | Package exception hierarchy.                                                                  |
-| `Fahad\QrCode\Facades`      | Laravel facade.                                                                               |
-| `Fahad\QrCode`              | Service provider and fluent `QrCode` entry point (no algorithm code).                          |
+- `Fahad\QrCode\Encoding` — segment building, bit buffers, and mode encoders.
+- `Fahad\QrCode\ErrorCorrection` — Galois field arithmetic and Reed–Solomon
+  error-correction coding.
+- `Fahad\QrCode\Matrix` — version table, finder/alignment/timing patterns,
+  format/version information, data placement, and mask-pattern selection.
+- `Fahad\QrCode\Renderer` — the `SvgRenderer` and `PngRenderer`.
 
-## Development
-
-```bash
-composer install
-
-composer test          # PHPUnit
-composer analyse       # PHPStan (level 8)
-composer format        # Laravel Pint (fix coding style)
-composer format:test   # Laravel Pint (dry run)
-```
-
-## Testing matrix
-
-CI (GitHub Actions) runs the test suite on **PHP 8.2 / 8.3 / 8.4** against
-**Laravel 10 / 11 / 12** using [Orchestra Testbench](https://github.com/orchestral/testbench).
-
-## Roadmap
-
-1. ✅ Package scaffolding: `composer.json`, PSR-4 layout, QA tooling, CI.
-2. ⬜ Core contracts and value objects (`Contracts`, `Data`).
-3. ⬜ QR encoder: analysis, encoding, Reed–Solomon ECC, masking, matrix assembly.
-4. ⬜ Renderers (SVG first, then PNG).
-5. ⬜ Laravel integration: service provider, facade, publishable config.
+`Fahad\QrCode\QrCode` is the fluent builder that collects options and delegates
+to the engine; no algorithm code lives in it. The Laravel integration
+(service provider, facade, Blade directive, config) is a thin layer over that
+engine.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Released under the MIT License.
