@@ -135,7 +135,7 @@ final class VersionTable
                     'L' => new EccBlockSpec(dataCodewords: 156, eccPerBlock: 20, g1Blocks: 2, g1DataPerBlock: 78),
                     'M' => new EccBlockSpec(dataCodewords: 124, eccPerBlock: 18, g1Blocks: 4, g1DataPerBlock: 31),
                     'Q' => new EccBlockSpec(dataCodewords: 88, eccPerBlock: 18, g1Blocks: 2, g1DataPerBlock: 14, g2Blocks: 4, g2DataPerBlock: 15),
-                    'H' => new EccBlockSpec(dataCodewords: 66, eccPerBlock: 26, g1Blocks: 4, g1DataPerBlock: 11, g2Blocks: 1, g2DataPerBlock: 12),
+                    'H' => new EccBlockSpec(dataCodewords: 66, eccPerBlock: 26, g1Blocks: 4, g1DataPerBlock: 13, g2Blocks: 1, g2DataPerBlock: 14),
                 ]
             ),
             8 => new VersionSpec(
@@ -144,7 +144,7 @@ final class VersionTable
                 eccSpecs: [
                     'L' => new EccBlockSpec(dataCodewords: 194, eccPerBlock: 24, g1Blocks: 2, g1DataPerBlock: 97),
                     'M' => new EccBlockSpec(dataCodewords: 154, eccPerBlock: 22, g1Blocks: 2, g1DataPerBlock: 38, g2Blocks: 2, g2DataPerBlock: 39),
-                    'Q' => new EccBlockSpec(dataCodewords: 122, eccPerBlock: 22, g1Blocks: 4, g1DataPerBlock: 18, g2Blocks: 2, g2DataPerBlock: 19),
+                    'Q' => new EccBlockSpec(dataCodewords: 110, eccPerBlock: 22, g1Blocks: 4, g1DataPerBlock: 18, g2Blocks: 2, g2DataPerBlock: 19),
                     'H' => new EccBlockSpec(dataCodewords: 86, eccPerBlock: 26, g1Blocks: 4, g1DataPerBlock: 14, g2Blocks: 2, g2DataPerBlock: 15),
                 ]
             ),

@@ -126,6 +126,13 @@ final class QrFixtures
             'high-version/v38-byte' => new QrFixture(str_repeat('Lorem ipsum dolor sit. ', 90), 'M', 38),
             'high-version/v35-alphanumeric' => new QrFixture(str_repeat('DATA-1234 ', 180), 'Q', 35),
             'high-version/v28-high-ecc' => new QrFixture(str_repeat('secure ', 90), 'H', 28),
+
+            // Regression fixtures for two corrected VersionTable cells whose
+            // data-codeword total once disagreed with their block layout
+            // (Version 7-H and Version 8-Q). A mis-stated block split silently
+            // drops codewords at encode time, so these must decode byte-exact.
+            'ecc-regression/v7-H' => new QrFixture('Backup key: 7F3A-91C2-DE04-88B1-56AA-2299-C7E0-4413-9D5F-A0E2', 'H', 7),
+            'ecc-regression/v8-Q' => new QrFixture('Warehouse manifest 2026-09-28: pallets 1-24, gate C, dock 7, verify seals before signing.', 'Q', 8),
         ];
     }
 

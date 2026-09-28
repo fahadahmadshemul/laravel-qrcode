@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Fahad\QrCode\Renderer;
 
+use Fahad\QrCode\Exceptions\RenderException;
 use Fahad\QrCode\Matrix\QrMatrix;
-use RuntimeException;
 
 /**
  * Renders a QR matrix as a compact, scalable, valid SVG XML document.
@@ -23,11 +23,11 @@ final class SvgRenderer implements Renderer
         $totalModules = $moduleCount + $margin * 2;
 
         if ($size < 1) {
-            throw new RuntimeException(sprintf('Target size %dpx must be positive.', $size));
+            throw new RenderException(sprintf('Target size %dpx must be positive.', $size));
         }
 
         if ($margin < 0) {
-            throw new RuntimeException(sprintf('Margin %d must not be negative.', $margin));
+            throw new RenderException(sprintf('Margin %d must not be negative.', $margin));
         }
 
         $fgColor = htmlspecialchars($foregroundColor, ENT_QUOTES | ENT_XML1, 'UTF-8');

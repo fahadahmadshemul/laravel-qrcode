@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Fahad\QrCode\Renderer;
 
+use Fahad\QrCode\Exceptions\RenderException;
 use Fahad\QrCode\Matrix\QrMatrix;
-use RuntimeException;
 
 /**
  * Renders a QR matrix as PNG image data (GD-based).
@@ -31,11 +31,11 @@ final class PngRenderer implements Renderer
         string $backgroundColor = '#ffffff'
     ): string {
         if (! extension_loaded('gd')) {
-            throw new RuntimeException('The GD extension is required for PNG rendering.');
+            throw new RenderException('The GD extension is required for PNG rendering.');
         }
 
         if ($margin < 0) {
-            throw new RuntimeException(sprintf('Margin %d must not be negative.', $margin));
+            throw new RenderException(sprintf('Margin %d must not be negative.', $margin));
         }
 
         $moduleCount = $matrix->size;
@@ -43,7 +43,7 @@ final class PngRenderer implements Renderer
         $scale = intdiv($size, $totalModules);
 
         if ($scale < 1) {
-            throw new RuntimeException(sprintf(
+            throw new RenderException(sprintf(
                 'Target size %dpx is too small for %d modules; minimum is %dpx.',
                 $size,
                 $totalModules,
@@ -54,13 +54,13 @@ final class PngRenderer implements Renderer
         $width = $scale * $totalModules;
 
         if ($width < 1) {
-            throw new RuntimeException('PNG dimensions must be positive.');
+            throw new RenderException('PNG dimensions must be positive.');
         }
 
         // Reject before allocating: an unbounded size/margin would otherwise
         // drive imagecreatetruecolor() into a multi-gigabyte allocation (DoS).
         if ($width > self::MAX_DIMENSION) {
-            throw new RuntimeException(sprintf(
+            throw new RenderException(sprintf(
                 'Rendered PNG dimension %dpx exceeds the maximum of %dpx; '
                 .'reduce the requested size (%dpx) or margin (%d).',
                 $width,
@@ -73,7 +73,7 @@ final class PngRenderer implements Renderer
         $image = imagecreatetruecolor($width, $width);
 
         if ($image === false) {
-            throw new RuntimeException('Unable to create GD image surface.');
+            throw new RenderException('Unable to create GD image surface.');
         }
 
         imagealphablending($image, false);
@@ -87,7 +87,7 @@ final class PngRenderer implements Renderer
 
         if ($bgColorAlloc === false || $fgColorAlloc === false) {
             imagedestroy($image);
-            throw new RuntimeException('Unable to allocate PNG colours.');
+            throw new RenderException('Unable to allocate PNG colours.');
         }
 
         imagefill($image, 0, 0, $bgColorAlloc);
