@@ -26,6 +26,10 @@ final class SvgRenderer implements Renderer
             throw new RuntimeException(sprintf('Target size %dpx must be positive.', $size));
         }
 
+        if ($margin < 0) {
+            throw new RuntimeException(sprintf('Margin %d must not be negative.', $margin));
+        }
+
         $fgColor = htmlspecialchars($foregroundColor, ENT_QUOTES | ENT_XML1, 'UTF-8');
         $bgColor = htmlspecialchars($backgroundColor, ENT_QUOTES | ENT_XML1, 'UTF-8');
 

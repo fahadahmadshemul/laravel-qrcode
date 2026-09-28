@@ -350,6 +350,14 @@ class QrCode implements Responsable, Stringable
             throw UnsupportedFormatException::forFormat($this->format);
         }
 
+        if ($this->size < 1) {
+            throw QrCodeException::invalidSize($this->size);
+        }
+
+        if ($this->margin < 0) {
+            throw QrCodeException::invalidMargin($this->margin);
+        }
+
         $matrix = (new MatrixBuilder)->build($this->data, $this->errorCorrectionLayer(), $this->encodingMode, $this->eci);
         $renderer = $this->renderer();
 

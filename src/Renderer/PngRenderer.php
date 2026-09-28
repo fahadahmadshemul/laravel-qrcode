@@ -12,6 +12,17 @@ use RuntimeException;
  */
 final class PngRenderer implements Renderer
 {
+    /**
+     * Hard ceiling on the rendered image's side length in pixels.
+     *
+     * A truecolor GD surface costs ~4 bytes per pixel, so an unbounded,
+     * caller-controlled size would let a single request allocate gigabytes
+     * (a 50 000px request ≈ 10 GB) and exhaust memory. This cap keeps the
+     * worst case near 100 MB while staying far above any legitimate QR size:
+     * even a Version 40 symbol (177 modules) fits at ~28 px per module.
+     */
+    private const MAX_DIMENSION = 5000;
+
     public function render(
         QrMatrix $matrix,
         int $size,
@@ -21,6 +32,10 @@ final class PngRenderer implements Renderer
     ): string {
         if (! extension_loaded('gd')) {
             throw new RuntimeException('The GD extension is required for PNG rendering.');
+        }
+
+        if ($margin < 0) {
+            throw new RuntimeException(sprintf('Margin %d must not be negative.', $margin));
         }
 
         $moduleCount = $matrix->size;
@@ -40,6 +55,19 @@ final class PngRenderer implements Renderer
 
         if ($width < 1) {
             throw new RuntimeException('PNG dimensions must be positive.');
+        }
+
+        // Reject before allocating: an unbounded size/margin would otherwise
+        // drive imagecreatetruecolor() into a multi-gigabyte allocation (DoS).
+        if ($width > self::MAX_DIMENSION) {
+            throw new RuntimeException(sprintf(
+                'Rendered PNG dimension %dpx exceeds the maximum of %dpx; '
+                .'reduce the requested size (%dpx) or margin (%d).',
+                $width,
+                self::MAX_DIMENSION,
+                $size,
+                $margin
+            ));
         }
 
         $image = imagecreatetruecolor($width, $width);
