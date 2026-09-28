@@ -31,7 +31,7 @@ masking and rendering — is implemented from scratch in this package. It has
 ## Installation
 
 ```bash
-composer require fahad/laravel-qrcode
+composer require fahadahmadshemul/laravel-qrcode
 ```
 
 ## Laravel auto-discovery
