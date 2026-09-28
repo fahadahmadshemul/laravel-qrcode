@@ -14,7 +14,7 @@ final class AlphanumericEncodingTest extends TestCase
 {
     public function test_character_count_bits_for_alphanumeric_mode(): void
     {
-        $v1  = VersionTable::get(1);
+        $v1 = VersionTable::get(1);
         $v10 = VersionTable::get(10);
         $v27 = VersionTable::get(27);
 
@@ -25,7 +25,7 @@ final class AlphanumericEncodingTest extends TestCase
 
     public function test_alphanumeric_mode_encodes_data_correctly(): void
     {
-        $encoder = new DataEncoder();
+        $encoder = new DataEncoder;
         $codewords = $encoder->encode('HELLO WORLD', 'L', VersionTable::get(1), EncodingMode::Alphanumeric);
 
         $this->assertCount(26, $codewords);

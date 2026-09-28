@@ -48,7 +48,7 @@ final class DataEncoder
         $dataCodewords = $this->dataCodewords($data, $versionSpec, $encodingMode, $blockSpec->dataCodewords, $useEci);
 
         // 2. Split data codewords into blocks and compute Reed-Solomon ECC for each block
-        $rs = new ReedSolomon();
+        $rs = new ReedSolomon;
         $blockDataCounts = $blockSpec->blockDataCounts();
         $blocksData = [];
         $blocksEcc = [];
@@ -141,6 +141,9 @@ final class DataEncoder
         return $dataCodewords;
     }
 
+    /**
+     * @param  list<int>  $bits
+     */
     private function encodeNumericPayload(array &$bits, string $data): void
     {
         $length = strlen($data);
@@ -157,6 +160,9 @@ final class DataEncoder
         }
     }
 
+    /**
+     * @param  list<int>  $bits
+     */
     private function encodeAlphanumericPayload(array &$bits, string $data): void
     {
         $length = strlen($data);
@@ -174,6 +180,9 @@ final class DataEncoder
         }
     }
 
+    /**
+     * @param  list<int>  $bits
+     */
     private function encodeBytePayload(array &$bits, string $data): void
     {
         $length = strlen($data);
@@ -182,6 +191,9 @@ final class DataEncoder
         }
     }
 
+    /**
+     * @param  list<int>  $bits
+     */
     private function pushBits(array &$bits, int $value, int $length): void
     {
         for ($i = $length - 1; $i >= 0; $i--) {

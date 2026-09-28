@@ -239,4 +239,3 @@ final class MaskTest extends TestCase
         return $reflection->invoke($mask);
     }
 }
-

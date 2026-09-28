@@ -1,0 +1,24 @@
+# Normalize line endings: treat these as text and check out with LF on every
+# platform, so Pint's line_ending fixer stays quiet on Windows working trees.
+* text=auto eol=lf
+
+*.php text eol=lf
+*.json text eol=lf
+*.neon text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Binary assets must never be line-ending normalized.
+*.png binary
+
+# Keep development-only files out of `composer archive` / dist tarballs.
+/tests export-ignore
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/phpunit.xml export-ignore
+/phpunit9.xml export-ignore
+/phpstan.neon export-ignore
+/pint.json export-ignore

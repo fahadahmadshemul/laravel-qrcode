@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Fahad\QrCode\Tests\Unit\Matrix;
 
+use Fahad\QrCode\Encoding\DataEncoder;
 use Fahad\QrCode\ErrorCorrection\ErrorCorrectionLevel;
+use Fahad\QrCode\Matrix\DataPlacer;
+use Fahad\QrCode\Matrix\FinderPattern;
 use Fahad\QrCode\Matrix\FormatInformation;
 use Fahad\QrCode\Matrix\Mask;
 use Fahad\QrCode\Matrix\MaskPattern;
 use Fahad\QrCode\Matrix\MatrixBuilder;
 use Fahad\QrCode\Matrix\QrMatrix;
+use Fahad\QrCode\Matrix\TimingPattern;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -30,7 +34,7 @@ final class MaskingSystemTest extends TestCase
 
     public function test_matrix_builder_evaluates_all_eight_masks_and_stores_selected_mask(): void
     {
-        $builder = new MatrixBuilder();
+        $builder = new MatrixBuilder;
         $matrix = $builder->build('TEST PAYLOAD', 'M');
 
         $selectedMask = $builder->selectedMask();
@@ -137,7 +141,7 @@ final class MaskingSystemTest extends TestCase
 
     public function test_selects_mask_with_lowest_penalty(): void
     {
-        $builder = new MatrixBuilder();
+        $builder = new MatrixBuilder;
         $payload = 'TEST';
         $matrix = $builder->build($payload, 'H');
 
@@ -149,13 +153,13 @@ final class MaskingSystemTest extends TestCase
 
         // Build base matrix up to data placement
         $baseMatrix = new QrMatrix(21);
-        (new \Fahad\QrCode\Matrix\FinderPattern($baseMatrix))->place();
-        (new \Fahad\QrCode\Matrix\TimingPattern($baseMatrix))->place();
+        (new FinderPattern($baseMatrix))->place();
+        (new TimingPattern($baseMatrix))->place();
         (new FormatInformation($baseMatrix))->place($ecc, MaskPattern::Pattern0);
-        
-        $encoder = new \Fahad\QrCode\Encoding\DataEncoder();
+
+        $encoder = new DataEncoder;
         $codewords = $encoder->encode($payload, 'H');
-        (new \Fahad\QrCode\Matrix\DataPlacer($baseMatrix))->place($codewords);
+        (new DataPlacer($baseMatrix))->place($codewords);
 
         $minScore = PHP_INT_MAX;
         $minPattern = MaskPattern::Pattern0;

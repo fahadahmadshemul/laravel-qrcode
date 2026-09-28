@@ -13,6 +13,7 @@ use Fahad\QrCode\Renderer\PngRenderer;
 use Fahad\QrCode\Renderer\Renderer;
 use Fahad\QrCode\Renderer\SvgRenderer;
 use Illuminate\Contracts\Support\Responsable;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Stringable;
 
@@ -119,9 +120,7 @@ class QrCode implements Responsable, Stringable
     /**
      * Helper method to render a QR code from Blade directives.
      *
-     * @param  string  $data
      * @param  array<string, mixed>  $options
-     * @return string
      */
     public static function renderFromBlade(string $data, array $options = []): string
     {
@@ -374,9 +373,7 @@ class QrCode implements Responsable, Stringable
      * Save the rendered QR code to the specified file path.
      * Automatically creates parent directories when necessary.
      *
-     * @param  string  $path
-     * @return static
-     * @throws Exceptions\FileWriteException|Exceptions\QrCodeException
+     * @throws Exceptions\FileWriteException|QrCodeException
      */
     public function save(string $path): static
     {
@@ -401,7 +398,6 @@ class QrCode implements Responsable, Stringable
      * Generate the QR code and return it encoded as a Base64 string or Data URI.
      *
      * @param  bool  $includeDataUri  Whether to prefix with data: URI scheme (e.g. data:image/png;base64,...).
-     * @return string
      */
     public function base64(bool $includeDataUri = true): string
     {
@@ -418,9 +414,7 @@ class QrCode implements Responsable, Stringable
     /**
      * Create a Laravel HTTP response containing the rendered QR code.
      *
-     * @param  int  $status
      * @param  array<string, string>  $headers
-     * @return \Illuminate\Http\Response
      */
     public function response(int $status = 200, array $headers = []): Response
     {
@@ -451,8 +445,7 @@ class QrCode implements Responsable, Stringable
     /**
      * Create an HTTP response that represents the object (Laravel Responsable contract).
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
      */
     public function toResponse($request): Response
     {

@@ -23,8 +23,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static string generate(?string $data = null)
  * @method static string base64(bool $includeDataUri = true)
  * @method static \Fahad\QrCode\QrCode save(string $path)
- * @method static string renderFromBlade(string $data, array $options = [])
- * @method static \Illuminate\Http\Response response(int $status = 200, array $headers = [])
+ * @method static string renderFromBlade(string $data, array<string, mixed> $options = [])
+ * @method static \Illuminate\Http\Response response(int $status = 200, array<string, string> $headers = [])
  * @method static string contentType()
  *
  * @see \Fahad\QrCode\QrCode

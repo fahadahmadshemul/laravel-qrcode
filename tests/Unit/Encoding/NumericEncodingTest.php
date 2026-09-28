@@ -6,6 +6,7 @@ namespace Fahad\QrCode\Tests\Unit\Encoding;
 
 use Fahad\QrCode\Encoding\DataEncoder;
 use Fahad\QrCode\Encoding\EncodingMode;
+use Fahad\QrCode\ErrorCorrection\ErrorCorrectionLevel;
 use Fahad\QrCode\Matrix\VersionTable;
 use PHPUnit\Framework\TestCase;
 
@@ -13,7 +14,7 @@ final class NumericEncodingTest extends TestCase
 {
     public function test_character_count_bits_for_numeric_mode(): void
     {
-        $v1  = VersionTable::get(1);
+        $v1 = VersionTable::get(1);
         $v10 = VersionTable::get(10);
         $v27 = VersionTable::get(27);
 
@@ -28,18 +29,18 @@ final class NumericEncodingTest extends TestCase
         // In Numeric mode: 4 + 10 + 33*10 + 4 = 348 bits = 44 bytes -> fits easily in V2-L (34 data codewords)!
         $data = str_repeat('9', 70);
 
-        $encoder = new DataEncoder();
+        $encoder = new DataEncoder;
         $codewords = $encoder->encode($data, 'L', null, EncodingMode::Numeric);
 
         $this->assertNotEmpty($codewords);
 
-        $versionSpec = VersionTable::forPayload($data, \Fahad\QrCode\ErrorCorrection\ErrorCorrectionLevel::L, EncodingMode::Numeric);
+        $versionSpec = VersionTable::forPayload($data, ErrorCorrectionLevel::L, EncodingMode::Numeric);
         $this->assertLessThanOrEqual(3, $versionSpec->number);
     }
 
     public function test_numeric_mode_encodes_data_correctly(): void
     {
-        $encoder = new DataEncoder();
+        $encoder = new DataEncoder;
         // Encodes '1234567890' in V1-L
         $codewords = $encoder->encode('1234567890', 'L', VersionTable::get(1), EncodingMode::Numeric);
 

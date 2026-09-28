@@ -67,7 +67,7 @@ final class ReedSolomon
      *
      * @param  list<int[]>  $dataBlocks
      * @param  list<int[]>  $eccBlocks
-     * @return int[]
+     * @return list<int>
      */
     public function interleave(array $dataBlocks, array $eccBlocks): array
     {

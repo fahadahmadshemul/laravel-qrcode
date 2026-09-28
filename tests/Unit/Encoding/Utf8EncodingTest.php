@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
 final class Utf8EncodingTest extends TestCase
 {
     /**
-     * @return array<string, array{string, bool}>  [payload, isMultibyte]
+     * @return array<string, array{string, bool}> [payload, isMultibyte]
      */
     public static function unicodePayloads(): array
     {

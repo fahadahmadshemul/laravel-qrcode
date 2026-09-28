@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Fahad\QrCode\Tests\Support;
 
+use Fahad\QrCode\Encoding\DataEncoder;
 use Fahad\QrCode\Encoding\EncodingMode;
 use Fahad\QrCode\Matrix\VersionSpec;
 
 /**
  * A minimal, spec-faithful QR *data segment* decoder used by the test suite.
  *
- * It reverses {@see \Fahad\QrCode\Encoding\DataEncoder}: given the padded data
+ * It reverses {@see DataEncoder}: given the padded data
  * codewords (before Reed-Solomon / interleaving) and the version they were
  * built for, it walks the bit stream — honouring an optional UTF-8 ECI header
  * — and reconstructs the original payload bytes. This lets tests assert that a

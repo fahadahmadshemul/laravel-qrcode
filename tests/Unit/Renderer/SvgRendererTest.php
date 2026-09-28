@@ -26,9 +26,9 @@ final class SvgRendererTest extends TestCase
         $this->assertStringContainsString('shape-rendering="crispEdges"', $svg);
 
         // Prove valid XML parsing
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
         $this->assertTrue($dom->loadXML($svg), 'SVG must be valid XML');
-        
+
         $xml = simplexml_load_string($svg);
         $this->assertNotFalse($xml, 'SimpleXML must parse SVG without errors');
         $this->assertSame('svg', $xml->getName());
@@ -42,19 +42,18 @@ final class SvgRendererTest extends TestCase
             ->margin(4)
             ->generate();
 
-        $this->assertIsString($svg);
         $this->assertStringStartsWith('<?xml version="1.0"', $svg);
         $this->assertStringContainsString('width="300"', $svg);
         $this->assertStringContainsString('height="300"', $svg);
 
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
         $this->assertTrue($dom->loadXML($svg));
     }
 
     public function test_configurable_size_and_margin(): void
     {
         $matrix = (new MatrixBuilder)->build('HELLO', 'L');
-        
+
         // Custom size 500, margin 2 -> Version 1 (21) + margin 2*2 = 25 total modules
         $svg = (new SvgRenderer)->render($matrix, 500, 2);
 
@@ -78,7 +77,7 @@ final class SvgRendererTest extends TestCase
         $this->assertStringContainsString('fill="#000000"', $svg);
         $this->assertStringContainsString('fill="#FF0000"', $svg);
 
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
         $this->assertTrue($dom->loadXML($svg));
     }
 

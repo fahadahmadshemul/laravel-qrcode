@@ -8,8 +8,8 @@ use Fahad\QrCode\Exceptions\InvalidErrorCorrectionLevelException;
 use Fahad\QrCode\Exceptions\QrCodeException;
 use Fahad\QrCode\Exceptions\UnsupportedFormatException;
 use Fahad\QrCode\QrCode;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-
 use PHPUnit\Framework\TestCase;
 
 final class QrCodePublicApiTest extends TestCase
@@ -23,7 +23,6 @@ final class QrCodePublicApiTest extends TestCase
             ->errorCorrection('M')
             ->generate();
 
-        $this->assertIsString($svg);
         $this->assertStringStartsWith('<?xml version="1.0"', $svg);
         $this->assertStringContainsString('width="300"', $svg);
         $this->assertStringContainsString('height="300"', $svg);
@@ -84,7 +83,7 @@ final class QrCodePublicApiTest extends TestCase
     public function test_to_response_responsable_contract(): void
     {
         $qr = QrCode::make('http://a.co')->svg();
-        $response = $qr->toResponse(null);
+        $response = $qr->toResponse(Request::create('/'));
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame('image/svg+xml', $response->headers->get('Content-Type'));

@@ -8,6 +8,7 @@ use Fahad\QrCode\ErrorCorrection\ErrorCorrectionLevel;
 use Fahad\QrCode\Matrix\MaskPattern;
 use Fahad\QrCode\Matrix\MatrixBuilder;
 use Fahad\QrCode\Matrix\VersionInformation;
+use Fahad\QrCode\Matrix\VersionSpec;
 use Fahad\QrCode\Matrix\VersionTable;
 use PHPUnit\Framework\TestCase;
 
@@ -16,6 +17,17 @@ use PHPUnit\Framework\TestCase;
  */
 final class VersionsV11To20Test extends TestCase
 {
+    /**
+     * Fetch the version a builder selected, asserting it is set (non-null after build()).
+     */
+    private function builtVersion(MatrixBuilder $builder): VersionSpec
+    {
+        $version = $builder->version();
+        $this->assertNotNull($version);
+
+        return $version;
+    }
+
     // ----------------------------------------------------------------
     // Table: correct sizes for versions 11–20
     // ----------------------------------------------------------------
@@ -23,7 +35,7 @@ final class VersionsV11To20Test extends TestCase
     public function test_version_sizes_from_11_to_20(): void
     {
         for ($v = 11; $v <= 20; $v++) {
-            $spec        = VersionTable::get($v);
+            $spec = VersionTable::get($v);
             $expectedSize = 17 + 4 * $v;
 
             $this->assertSame($v, $spec->number, "Version number mismatch for v{$v}");
@@ -37,7 +49,8 @@ final class VersionsV11To20Test extends TestCase
 
     /**
      * @dataProvider alignmentCentersProvider
-     * @param list<int> $expected
+     *
+     * @param  list<int>  $expected
      */
     public function test_alignment_pattern_centers(int $version, array $expected): void
     {
@@ -105,7 +118,7 @@ final class VersionsV11To20Test extends TestCase
      */
     public function test_ecc_data_codewords(int $version, string $level, int $expectedDataCodewords): void
     {
-        $ecc  = ErrorCorrectionLevel::fromName($level);
+        $ecc = ErrorCorrectionLevel::fromName($level);
         $spec = VersionTable::get($version);
 
         $this->assertSame($expectedDataCodewords, $spec->eccSpec($ecc)->dataCodewords);
@@ -181,13 +194,13 @@ final class VersionsV11To20Test extends TestCase
      */
     public function test_every_version_and_ecc_level_builds_valid_matrix(int $version, string $level): void
     {
-        $ecc      = ErrorCorrectionLevel::fromName($level);
-        $spec     = VersionTable::get($version);
+        $ecc = ErrorCorrectionLevel::fromName($level);
+        $spec = VersionTable::get($version);
         $capacity = $spec->byteCapacity($ecc);
-        $payload  = str_repeat('A', max(1, $capacity));
+        $payload = str_repeat('A', max(1, $capacity));
 
         $builder = new MatrixBuilder;
-        $matrix  = $builder->build($payload, $level);
+        $matrix = $builder->build($payload, $level);
 
         $chosenVersion = $builder->version();
         $this->assertNotNull($chosenVersion);
@@ -222,9 +235,9 @@ final class VersionsV11To20Test extends TestCase
     {
         // 1 byte always fits in Version 1
         $builder = new MatrixBuilder;
-        $matrix  = $builder->build('A', 'L');
+        $matrix = $builder->build('A', 'L');
 
-        $this->assertSame(1, $builder->version()->number);
+        $this->assertSame(1, $this->builtVersion($builder)->number);
         $this->assertSame(21, $matrix->size);
     }
 
@@ -232,9 +245,9 @@ final class VersionsV11To20Test extends TestCase
     {
         // 275 bytes exceeds V10-L capacity (274) → needs at least V11
         $builder = new MatrixBuilder;
-        $matrix  = $builder->build(str_repeat('x', 275), 'L');
+        $matrix = $builder->build(str_repeat('x', 275), 'L');
 
-        $version = $builder->version()->number;
+        $version = $this->builtVersion($builder)->number;
         $this->assertGreaterThanOrEqual(11, $version);
         // 275 bytes fits comfortably within V11 (322 bytes at L)
         $this->assertLessThanOrEqual(11, $version);
@@ -245,41 +258,41 @@ final class VersionsV11To20Test extends TestCase
 
     public function test_payload_at_v11_l_capacity_boundary(): void
     {
-        $spec     = VersionTable::get(11);
-        $ecc      = ErrorCorrectionLevel::fromName('L');
+        $spec = VersionTable::get(11);
+        $ecc = ErrorCorrectionLevel::fromName('L');
         $capacity = $spec->byteCapacity($ecc);
 
         // Exactly at V11 capacity → chosen version must be ≤ 11
         $builder = new MatrixBuilder;
         $builder->build(str_repeat('b', $capacity), 'L');
 
-        $this->assertLessThanOrEqual(11, $builder->version()->number);
+        $this->assertLessThanOrEqual(11, $this->builtVersion($builder)->number);
     }
 
     public function test_payload_at_v20_l_max_capacity(): void
     {
-        $spec     = VersionTable::get(20);
-        $ecc      = ErrorCorrectionLevel::fromName('L');
+        $spec = VersionTable::get(20);
+        $ecc = ErrorCorrectionLevel::fromName('L');
         $capacity = $spec->byteCapacity($ecc);
 
         $builder = new MatrixBuilder;
-        $matrix  = $builder->build(str_repeat('z', $capacity), 'L');
+        $matrix = $builder->build(str_repeat('z', $capacity), 'L');
 
-        $this->assertSame(20, $builder->version()->number);
+        $this->assertSame(20, $this->builtVersion($builder)->number);
         $this->assertSame(97, $matrix->size); // 17 + 4*20 = 97
     }
 
     public function test_payload_one_byte_over_v20_capacity_escalates_to_v21(): void
     {
-        $spec     = VersionTable::get(20);
-        $ecc      = ErrorCorrectionLevel::fromName('L');
+        $spec = VersionTable::get(20);
+        $ecc = ErrorCorrectionLevel::fromName('L');
         $capacity = $spec->byteCapacity($ecc);
 
         // One byte over V20 → escalates to V21+, does NOT throw
         $builder = new MatrixBuilder;
         $builder->build(str_repeat('x', $capacity + 1), 'L');
 
-        $this->assertGreaterThanOrEqual(21, $builder->version()->number);
+        $this->assertGreaterThanOrEqual(21, $this->builtVersion($builder)->number);
     }
 
     // ----------------------------------------------------------------
@@ -302,23 +315,23 @@ final class VersionsV11To20Test extends TestCase
     public function test_auto_escalation_from_v10_to_v11_at_level_m(): void
     {
         $v10Capacity = VersionTable::get(10)->byteCapacity(ErrorCorrectionLevel::fromName('M'));
-        $payload     = str_repeat('x', $v10Capacity + 1);
+        $payload = str_repeat('x', $v10Capacity + 1);
 
         $builder = new MatrixBuilder;
         $builder->build($payload, 'M');
 
-        $this->assertGreaterThanOrEqual(11, $builder->version()->number);
+        $this->assertGreaterThanOrEqual(11, $this->builtVersion($builder)->number);
     }
 
     public function test_auto_escalation_from_v19_to_v20_at_level_h(): void
     {
         $v19Capacity = VersionTable::get(19)->byteCapacity(ErrorCorrectionLevel::fromName('H'));
-        $payload     = str_repeat('x', $v19Capacity + 1);
+        $payload = str_repeat('x', $v19Capacity + 1);
 
         $builder = new MatrixBuilder;
         $builder->build($payload, 'H');
 
-        $this->assertGreaterThanOrEqual(20, $builder->version()->number);
+        $this->assertGreaterThanOrEqual(20, $this->builtVersion($builder)->number);
     }
 
     // ----------------------------------------------------------------
@@ -330,8 +343,8 @@ final class VersionsV11To20Test extends TestCase
      */
     public function test_block_data_counts_sum_matches_total_data_codewords(int $version, string $level): void
     {
-        $ecc     = ErrorCorrectionLevel::fromName($level);
-        $spec    = VersionTable::get($version);
+        $ecc = ErrorCorrectionLevel::fromName($level);
+        $spec = VersionTable::get($version);
         $eccSpec = $spec->eccSpec($ecc);
 
         $this->assertSame(

@@ -7,15 +7,28 @@ namespace Fahad\QrCode\Tests\Unit\Matrix;
 use Fahad\QrCode\ErrorCorrection\ErrorCorrectionLevel;
 use Fahad\QrCode\Exceptions\QrCodeOverflowException;
 use Fahad\QrCode\Matrix\AlignmentPattern;
+use Fahad\QrCode\Matrix\FinderPattern;
 use Fahad\QrCode\Matrix\MaskPattern;
 use Fahad\QrCode\Matrix\MatrixBuilder;
 use Fahad\QrCode\Matrix\QrMatrix;
 use Fahad\QrCode\Matrix\VersionInformation;
+use Fahad\QrCode\Matrix\VersionSpec;
 use Fahad\QrCode\Matrix\VersionTable;
 use PHPUnit\Framework\TestCase;
 
 final class VersionsTest extends TestCase
 {
+    /**
+     * Fetch the version a builder selected, asserting it is set (non-null after build()).
+     */
+    private function builtVersion(MatrixBuilder $builder): VersionSpec
+    {
+        $version = $builder->version();
+        $this->assertNotNull($version);
+
+        return $version;
+    }
+
     public function test_version_sizes_from_1_to_10(): void
     {
         for ($v = 1; $v <= 10; $v++) {
@@ -63,7 +76,7 @@ final class VersionsTest extends TestCase
                 $capacity = $spec->byteCapacity($ecc);
                 $payload = str_repeat('A', max(1, $capacity));
 
-                $builder = new MatrixBuilder();
+                $builder = new MatrixBuilder;
                 $matrix = $builder->build($payload, $level);
 
                 $chosenVersion = $builder->version();
@@ -82,31 +95,31 @@ final class VersionsTest extends TestCase
 
     public function test_automatic_version_escalation_based_on_payload_length(): void
     {
-        $builder = new MatrixBuilder();
+        $builder = new MatrixBuilder;
 
         // 10 bytes -> Version 1 (Level M max 14)
         $matrix1 = $builder->build(str_repeat('x', 10), 'M');
-        $this->assertSame(1, $builder->version()->number);
+        $this->assertSame(1, $this->builtVersion($builder)->number);
         $this->assertSame(21, $matrix1->size);
 
         // 20 bytes -> Version 2 (Level M max 26)
         $matrix2 = $builder->build(str_repeat('x', 20), 'M');
-        $this->assertSame(2, $builder->version()->number);
+        $this->assertSame(2, $this->builtVersion($builder)->number);
         $this->assertSame(25, $matrix2->size);
 
         // 50 bytes -> Version 4 (Level M max 62)
         $matrix4 = $builder->build(str_repeat('x', 50), 'M');
-        $this->assertSame(4, $builder->version()->number);
+        $this->assertSame(4, $this->builtVersion($builder)->number);
         $this->assertSame(33, $matrix4->size);
 
         // 150 bytes -> Version 8 (Level M max 152)
         $matrix8 = $builder->build(str_repeat('x', 150), 'M');
-        $this->assertSame(8, $builder->version()->number);
+        $this->assertSame(8, $this->builtVersion($builder)->number);
         $this->assertSame(49, $matrix8->size);
 
         // 200 bytes -> Version 10 (Level M max 213)
         $matrix10 = $builder->build(str_repeat('x', 200), 'M');
-        $this->assertSame(10, $builder->version()->number);
+        $this->assertSame(10, $this->builtVersion($builder)->number);
         $this->assertSame(57, $matrix10->size);
     }
 
@@ -123,7 +136,7 @@ final class VersionsTest extends TestCase
 
         // Center at (6, 18) overlaps top-right finder area so it is skipped if finders placed first
         $matrixWithFinders = new QrMatrix($version->size);
-        (new \Fahad\QrCode\Matrix\FinderPattern($matrixWithFinders))->place();
+        (new FinderPattern($matrixWithFinders))->place();
         (new AlignmentPattern($matrixWithFinders, $version))->place();
 
         // Only non-overlapping alignment pattern at (18, 18) placed
@@ -157,6 +170,6 @@ final class VersionsTest extends TestCase
         $this->expectException(QrCodeOverflowException::class);
 
         // 3000 bytes exceeds Version 40 max byte capacity (2956 bytes at Level L)
-        (new MatrixBuilder())->build(str_repeat('a', 3000), 'L');
+        (new MatrixBuilder)->build(str_repeat('a', 3000), 'L');
     }
 }

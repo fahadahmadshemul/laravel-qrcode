@@ -80,7 +80,8 @@ final class EncodingModeTest extends TestCase
 
     public function test_validate_payload_for_byte_mode(): void
     {
+        $this->expectNotToPerformAssertions();
+
         EncodingMode::Byte->validatePayload('Anything goes 123! @#$ বাংলা');
-        $this->assertTrue(true);
     }
 }

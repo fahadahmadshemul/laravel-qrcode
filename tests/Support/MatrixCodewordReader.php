@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fahad\QrCode\Tests\Support;
 
+use Fahad\QrCode\Encoding\DataEncoder;
 use Fahad\QrCode\Matrix\EccBlockSpec;
 use Fahad\QrCode\Matrix\MaskPattern;
 use Fahad\QrCode\Matrix\QrMatrix;
@@ -14,7 +15,7 @@ use Fahad\QrCode\Matrix\QrMatrix;
  * Given the mask the builder chose, it reverses the module masking and the
  * zig-zag placement to recover the interleaved codeword stream, then undoes
  * the block interleaving to return the padded data codewords — the same array
- * {@see \Fahad\QrCode\Encoding\DataEncoder::dataCodewords()} produced. Feeding
+ * {@see DataEncoder::dataCodewords()} produced. Feeding
  * that to {@see QrStreamDecoder} closes the loop from a rendered code back to
  * the original payload.
  */

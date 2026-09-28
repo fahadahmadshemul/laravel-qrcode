@@ -121,8 +121,8 @@ final class PngRenderer implements Renderer
     }
 
     /**
-     * @param  array{0: int, 1: int, 2: int, 3: int}  $default
-     * @return array{0: int, 1: int, 2: int, 3: int}
+     * @param  array{0: int<0, 255>, 1: int<0, 255>, 2: int<0, 255>, 3: int<0, 127>}  $default
+     * @return array{0: int<0, 255>, 1: int<0, 255>, 2: int<0, 255>, 3: int<0, 127>}
      */
     private function parseColor(string $color, array $default): array
     {
@@ -156,7 +156,7 @@ final class PngRenderer implements Renderer
             $g = hexdec(str_repeat($hex[1], 2));
             $b = hexdec(str_repeat($hex[2], 2));
 
-            return [(int) $r, (int) $g, (int) $b, 0];
+            return [$this->channel($r), $this->channel($g), $this->channel($b), 0];
         }
 
         if (strlen($hex) === 6) {
@@ -164,9 +164,19 @@ final class PngRenderer implements Renderer
             $g = hexdec(substr($hex, 2, 2));
             $b = hexdec(substr($hex, 4, 2));
 
-            return [(int) $r, (int) $g, (int) $b, 0];
+            return [$this->channel($r), $this->channel($g), $this->channel($b), 0];
         }
 
         return $default;
+    }
+
+    /**
+     * Clamp a colour channel to the 0–255 range GD's palette accepts.
+     *
+     * @return int<0, 255>
+     */
+    private function channel(int|float $value): int
+    {
+        return max(0, min(255, (int) $value));
     }
 }
