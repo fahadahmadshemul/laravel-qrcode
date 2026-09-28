@@ -1,5 +1,5 @@
 {
-    "name": "fahad/laravel-qrcode",
+    "name": "fahadahmadshemul/laravel-qrcode",
     "description": "Self-contained QR code generator for Laravel with the QR encoding engine implemented from scratch - no third-party QR libraries.",
     "type": "library",
     "license": "MIT",
