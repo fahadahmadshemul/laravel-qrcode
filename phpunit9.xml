@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    PHPUnit 9.x configuration used only by the Laravel 9 CI lane.
+
+    Laravel 9 / Orchestra Testbench 7 ship against PHPUnit 9, whose XML schema
+    predates the attributes used in phpunit.xml (`failOnDeprecation`,
+    `cacheDirectory`, and the `<source>` element, all PHPUnit 10+). This file
+    mirrors the same test suites and coverage source under the PHPUnit 9 schema
+    so the compatibility suite runs unchanged on Laravel 9.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheResultFile=".phpunit.cache/test-results"
+         convertDeprecationsToExceptions="false"
+         failOnWarning="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <coverage>
+        <include>
+            <directory>src</directory>
+        </include>
+    </coverage>
+</phpunit>

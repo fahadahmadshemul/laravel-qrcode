@@ -8,21 +8,24 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    fail-fast: true
     strategy:
+      fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4']
-        laravel: ['10.*', '11.*', '12.*']
         include:
-          - laravel: '10.*'
-            testbench: '8.*'
-          - laravel: '11.*'
-            testbench: '9.*'
-          - laravel: '12.*'
-            testbench: '10.*'
-        exclude:
-          - php: '8.4'
-            laravel: '10.*'
+          # Laravel 9 ships against PHPUnit 9 (testbench 7); pin PHP 8.2 (L9's ceiling)
+          # and run under the PHPUnit 9 config.
+          - { laravel: '9.*',  testbench: '7.*',  php: '8.2', phpunit: '^9.6', config: 'phpunit9.xml' }
+          - { laravel: '10.*', testbench: '8.*',  php: '8.2', config: 'phpunit.xml' }
+          - { laravel: '10.*', testbench: '8.*',  php: '8.3', config: 'phpunit.xml' }
+          - { laravel: '11.*', testbench: '9.*',  php: '8.2', config: 'phpunit.xml' }
+          - { laravel: '11.*', testbench: '9.*',  php: '8.3', config: 'phpunit.xml' }
+          - { laravel: '11.*', testbench: '9.*',  php: '8.4', config: 'phpunit.xml' }
+          - { laravel: '12.*', testbench: '10.*', php: '8.2', config: 'phpunit.xml' }
+          - { laravel: '12.*', testbench: '10.*', php: '8.3', config: 'phpunit.xml' }
+          - { laravel: '12.*', testbench: '10.*', php: '8.4', config: 'phpunit.xml' }
+          # Laravel 13 (testbench 11) requires PHP 8.3+.
+          - { laravel: '13.*', testbench: '11.*', php: '8.3', config: 'phpunit.xml' }
+          - { laravel: '13.*', testbench: '11.*', php: '8.4', config: 'phpunit.xml' }
     name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
     steps:
       - name: Checkout code
@@ -35,13 +38,18 @@ jobs:
           extensions: dom, curl, libxml, mbstring, zip, pcntl, gd
           coverage: none
 
-      - name: Install dependencies
+      - name: Constrain dependencies
         run: |
           composer require "illuminate/support:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
-          composer update --prefer-dist --no-interaction --no-progress
+          if [ -n "${{ matrix.phpunit }}" ]; then
+            composer require "phpunit/phpunit:${{ matrix.phpunit }}" --dev --no-interaction --no-update
+          fi
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
 
       - name: Execute tests
-        run: composer test
+        run: vendor/bin/phpunit --configuration ${{ matrix.config }} --colors=always
 
   static-analysis:
     runs-on: ubuntu-latest
