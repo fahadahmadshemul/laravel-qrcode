@@ -72,8 +72,9 @@ final class DataEncoderTest extends TestCase
 
     public function test_utf8_payload_is_byte_encoded(): void
     {
-        // 'é' is two UTF-8 bytes (0xC3 0xA9).
-        $codewords = $this->encoder->encode('é', 'H');
+        // 'é' is two UTF-8 bytes (0xC3 0xA9). ECI disabled here so the raw
+        // byte-mode vector is exercised (see Utf8EncodingTest for the ECI path).
+        $codewords = $this->encoder->encode('é', 'H', null, null, false);
         $dataPart = array_slice($codewords, 0, 9);
 
         // Header: mode 0100 + count 00000010 -> 0x40, 0x2C; data 0xC3 0xA9

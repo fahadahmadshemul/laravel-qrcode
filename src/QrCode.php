@@ -61,6 +61,12 @@ class QrCode implements Responsable, Stringable
     protected string $encodingMode;
 
     /**
+     * UTF-8 ECI header control: null = automatic (declare UTF-8 for multibyte
+     * payloads), true = force on, false = disable.
+     */
+    protected ?bool $eci;
+
+    /**
      * Create a new builder pre-filled with the package defaults.
      *
      * @param  array{size?: int, margin?: int, format?: string, error_correction?: string, foreground_color?: string, background_color?: string, color?: string, background?: string}  $config
@@ -80,6 +86,19 @@ class QrCode implements Responsable, Stringable
         $this->foregroundColor = (string) ($effectiveConfig['foreground_color'] ?? $effectiveConfig['color'] ?? '#000000');
         $this->backgroundColor = (string) ($effectiveConfig['background_color'] ?? $effectiveConfig['background'] ?? '#ffffff');
         $this->encodingMode = (string) ($effectiveConfig['encoding_mode'] ?? $effectiveConfig['mode'] ?? 'auto');
+        $this->eci = self::normalizeEci($effectiveConfig['eci'] ?? null);
+    }
+
+    /**
+     * Normalize a configured ECI value into null (auto), true or false.
+     */
+    private static function normalizeEci(mixed $value): ?bool
+    {
+        if ($value === null || (is_string($value) && strtolower(trim($value)) === 'auto')) {
+            return null;
+        }
+
+        return (bool) $value;
     }
 
     /**
@@ -134,6 +153,10 @@ class QrCode implements Responsable, Stringable
 
         if (isset($options['encoding_mode']) || isset($options['mode'])) {
             $builder->encodingMode((string) ($options['encoding_mode'] ?? $options['mode']));
+        }
+
+        if (array_key_exists('eci', $options)) {
+            $builder->eci(self::normalizeEci($options['eci']));
         }
 
         return $builder->generate();
@@ -215,6 +238,23 @@ class QrCode implements Responsable, Stringable
     public function mode(string|EncodingMode $mode): static
     {
         return $this->encodingMode($mode);
+    }
+
+    /**
+     * Control the UTF-8 ECI (Extended Channel Interpretation) header.
+     *
+     * By default (auto) the encoder declares UTF-8 for payloads that contain
+     * multibyte UTF-8 characters, which lets conformant decoders recover the
+     * original text exactly. Pass false to emit raw bytes with no declaration,
+     * or true to force the header on.
+     *
+     * @param  bool|null  $enabled  true = force on, false = off, null = auto.
+     */
+    public function eci(?bool $enabled = true): static
+    {
+        $this->eci = $enabled;
+
+        return $this;
     }
 
     /**
@@ -310,7 +350,7 @@ class QrCode implements Responsable, Stringable
             throw UnsupportedFormatException::forFormat($this->format);
         }
 
-        $matrix = (new MatrixBuilder)->build($this->data, $this->errorCorrectionLayer(), $this->encodingMode);
+        $matrix = (new MatrixBuilder)->build($this->data, $this->errorCorrectionLayer(), $this->encodingMode, $this->eci);
         $renderer = $this->renderer();
 
         return $renderer->render(
@@ -439,7 +479,7 @@ class QrCode implements Responsable, Stringable
     /**
      * The prepared generation options.
      *
-     * @return array{data: string, size: int, margin: int, format: string, error_correction: string, foreground_color: string, background_color: string}
+     * @return array{data: string, size: int, margin: int, format: string, error_correction: string, foreground_color: string, background_color: string, encoding_mode: string, eci: bool|null}
      */
     public function toArray(): array
     {
@@ -452,6 +492,7 @@ class QrCode implements Responsable, Stringable
             'foreground_color' => $this->foregroundColor,
             'background_color' => $this->backgroundColor,
             'encoding_mode' => $this->encodingMode,
+            'eci' => $this->eci,
         ];
     }
 }

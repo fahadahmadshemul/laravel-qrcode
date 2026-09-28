@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fahad\QrCode\Matrix;
 
+use Fahad\QrCode\Encoding\Eci;
 use Fahad\QrCode\Encoding\EncodingMode;
 use Fahad\QrCode\ErrorCorrection\ErrorCorrectionLevel;
 
@@ -65,13 +66,21 @@ final class VersionSpec
 
     /**
      * Total bit length required to encode the given payload data in the specified mode.
+     *
+     * When $eci is true an Extended Channel Interpretation header is prepended
+     * to the stream (used to declare UTF-8 for multibyte byte-mode payloads),
+     * so its bits must be reserved during version selection.
      */
-    public function requiredDataBits(string $data, ?EncodingMode $mode = null): int
+    public function requiredDataBits(string $data, ?EncodingMode $mode = null, bool $eci = false): int
     {
         $encodingMode = $mode ?? EncodingMode::detect($data);
         $charCount = strlen($data);
 
         $headerBits = 4 + $this->characterCountBits($encodingMode);
+
+        if ($eci) {
+            $headerBits += Eci::headerBits();
+        }
 
         $payloadBits = match ($encodingMode) {
             EncodingMode::Numeric => (int) (intdiv($charCount, 3) * 10 + match ($charCount % 3) {
@@ -89,11 +98,11 @@ final class VersionSpec
     /**
      * Check if the payload can fit into this version for the given ECC level and encoding mode.
      */
-    public function canFit(string $data, ErrorCorrectionLevel $level, ?EncodingMode $mode = null): bool
+    public function canFit(string $data, ErrorCorrectionLevel $level, ?EncodingMode $mode = null, bool $eci = false): bool
     {
         $availableDataBits = $this->eccSpec($level)->dataCodewords * 8;
 
-        return $this->requiredDataBits($data, $mode) <= $availableDataBits;
+        return $this->requiredDataBits($data, $mode, $eci) <= $availableDataBits;
     }
 
     /**

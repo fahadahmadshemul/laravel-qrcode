@@ -29,6 +29,7 @@
         "ext-gd": "Required for PNG image rendering."
     },
     "require-dev": {
+        "khanamiryan/qrcode-detector-decoder": "*",
         "laravel/pint": "^1.13",
         "orchestra/testbench": "^8.0|^9.0|^10.0",
         "phpstan/phpstan": "^1.10|^2.0",
@@ -67,4 +68,3 @@
     "minimum-stability": "stable",
     "prefer-stable": true
 }
-

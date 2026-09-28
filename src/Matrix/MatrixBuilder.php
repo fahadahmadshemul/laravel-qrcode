@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fahad\QrCode\Matrix;
 
 use Fahad\QrCode\Encoding\DataEncoder;
+use Fahad\QrCode\Encoding\Eci;
 use Fahad\QrCode\Encoding\EncodingMode;
 use Fahad\QrCode\ErrorCorrection\ErrorCorrectionLevel;
 
@@ -29,16 +30,22 @@ final class MatrixBuilder
 
     /**
      * Build the final masked QR matrix for the payload.
+     *
+     * @param  bool|null  $eci  UTF-8 ECI header control passed through to the
+     *                          data encoder (null = automatic for multibyte
+     *                          UTF-8 payloads).
      */
-    public function build(string $data, string $level, EncodingMode|string|null $mode = null): QrMatrix
+    public function build(string $data, string $level, EncodingMode|string|null $mode = null, ?bool $eci = null): QrMatrix
     {
         $ecc = ErrorCorrectionLevel::fromName($level);
         $encodingMode = EncodingMode::resolve($mode ?? EncodingMode::Auto, $data);
 
-        $versionSpec = VersionTable::forPayload($data, $ecc, $encodingMode);
+        $useEci = Eci::resolve($eci, $encodingMode, $data);
+
+        $versionSpec = VersionTable::forPayload($data, $ecc, $encodingMode, $useEci);
         $this->version = $versionSpec;
 
-        $codewords = $this->dataEncoder->encode($data, $level, $versionSpec, $encodingMode);
+        $codewords = $this->dataEncoder->encode($data, $level, $versionSpec, $encodingMode, $useEci);
 
         $matrix = new QrMatrix($versionSpec->size);
 

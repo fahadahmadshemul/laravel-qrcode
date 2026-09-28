@@ -42,14 +42,14 @@ final class VersionTable
         return self::$versions[$versionNumber];
     }
 
-    public static function forPayload(string|int $payload, ErrorCorrectionLevel $level, ?EncodingMode $mode = null): VersionSpec
+    public static function forPayload(string|int $payload, ErrorCorrectionLevel $level, ?EncodingMode $mode = null, bool $eci = false): VersionSpec
     {
         $data = is_string($payload) ? $payload : str_repeat('A', $payload);
         $encodingMode = $mode ?? (is_string($payload) ? EncodingMode::detect($data) : EncodingMode::Byte);
 
         for ($v = 1; $v <= self::MAX_VERSION; $v++) {
             $spec = self::get($v);
-            if ($spec->canFit($data, $level, $encodingMode)) {
+            if ($spec->canFit($data, $level, $encodingMode, $eci)) {
                 return $spec;
             }
         }

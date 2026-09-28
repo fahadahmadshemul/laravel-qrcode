@@ -15,22 +15,28 @@ final class DataEncoder
     /**
      * Encode payload data into interleaved data and ECC codewords for a given version, ECC level, and encoding mode.
      *
+     * @param  bool|null  $eci  Whether to emit a UTF-8 ECI header: null selects
+     *                          it automatically for multibyte UTF-8 byte-mode
+     *                          payloads, true forces it, false disables it.
      * @return list<int>
      */
     public function encode(
         string $data,
         string $level,
         ?VersionSpec $version = null,
-        EncodingMode|string|null $mode = null
+        EncodingMode|string|null $mode = null,
+        ?bool $eci = null
     ): array {
         $eccLevel = ErrorCorrectionLevel::fromName($level);
         $encodingMode = EncodingMode::resolve($mode ?? EncodingMode::Auto, $data);
         $encodingMode->validatePayload($data);
 
-        $versionSpec = $version ?? VersionTable::forPayload($data, $eccLevel, $encodingMode);
+        $useEci = Eci::resolve($eci, $encodingMode, $data);
+
+        $versionSpec = $version ?? VersionTable::forPayload($data, $eccLevel, $encodingMode, $useEci);
         $blockSpec = $versionSpec->eccSpec($eccLevel);
 
-        if (! $versionSpec->canFit($data, $eccLevel, $encodingMode)) {
+        if (! $versionSpec->canFit($data, $eccLevel, $encodingMode, $useEci)) {
             throw QrCodeOverflowException::payloadTooLarge(
                 strlen($data),
                 $versionSpec->number,
@@ -39,8 +45,53 @@ final class DataEncoder
             );
         }
 
+        $dataCodewords = $this->dataCodewords($data, $versionSpec, $encodingMode, $blockSpec->dataCodewords, $useEci);
+
+        // 2. Split data codewords into blocks and compute Reed-Solomon ECC for each block
+        $rs = new ReedSolomon();
+        $blockDataCounts = $blockSpec->blockDataCounts();
+        $blocksData = [];
+        $blocksEcc = [];
+
+        $offset = 0;
+        foreach ($blockDataCounts as $count) {
+            $blockData = array_slice($dataCodewords, $offset, $count);
+            $offset += $count;
+
+            $ecc = $rs->encodeBlock($blockData, $blockSpec->eccPerBlock);
+
+            $blocksData[] = $blockData;
+            $blocksEcc[] = $ecc;
+        }
+
+        // 3. Interleave data and ECC codewords across blocks
+        return $rs->interleave($blocksData, $blocksEcc);
+    }
+
+    /**
+     * Assemble the padded data codewords (mode/count header, payload, terminator
+     * and pad bytes) that precede Reed-Solomon encoding and interleaving.
+     *
+     * Exposed so callers and tests can inspect the exact byte stream a QR code
+     * carries — the layer responsible for correct UTF-8 handling.
+     *
+     * @return list<int>
+     */
+    public function dataCodewords(
+        string $data,
+        VersionSpec $versionSpec,
+        EncodingMode $encodingMode,
+        int $totalDataCodewords,
+        bool $eci = false
+    ): array {
         // 1. Bitstream assembly
         $bits = [];
+
+        // Optional ECI header declaring UTF-8 (ISO/IEC 18004 Section 7.4.2.2).
+        if ($eci) {
+            $this->pushBits($bits, Eci::MODE_INDICATOR, 4);
+            $this->pushBits($bits, Eci::UTF8, 8);
+        }
 
         // Mode indicator
         $this->pushBits($bits, $encodingMode->modeIndicator(), 4);
@@ -58,7 +109,7 @@ final class DataEncoder
         };
 
         // Terminator (up to 4 zero bits)
-        $totalDataBits = $blockSpec->dataCodewords * 8;
+        $totalDataBits = $totalDataCodewords * 8;
         $neededTerminator = min(4, $totalDataBits - count($bits));
         if ($neededTerminator > 0) {
             $this->pushBits($bits, 0, $neededTerminator);
@@ -82,30 +133,12 @@ final class DataEncoder
         // Pad with alternating 236 (0xEC) and 17 (0x11) up to total data codewords
         $padBytes = [0xEC, 0x11];
         $padIndex = 0;
-        while (count($dataCodewords) < $blockSpec->dataCodewords) {
+        while (count($dataCodewords) < $totalDataCodewords) {
             $dataCodewords[] = $padBytes[$padIndex % 2];
             $padIndex++;
         }
 
-        // 2. Split data codewords into blocks and compute Reed-Solomon ECC for each block
-        $rs = new ReedSolomon();
-        $blockDataCounts = $blockSpec->blockDataCounts();
-        $blocksData = [];
-        $blocksEcc = [];
-
-        $offset = 0;
-        foreach ($blockDataCounts as $count) {
-            $blockData = array_slice($dataCodewords, $offset, $count);
-            $offset += $count;
-
-            $ecc = $rs->encodeBlock($blockData, $blockSpec->eccPerBlock);
-
-            $blocksData[] = $blockData;
-            $blocksEcc[] = $ecc;
-        }
-
-        // 3. Interleave data and ECC codewords across blocks
-        return $rs->interleave($blocksData, $blocksEcc);
+        return $dataCodewords;
     }
 
     private function encodeNumericPayload(array &$bits, string $data): void
