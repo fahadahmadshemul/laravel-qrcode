@@ -48,6 +48,7 @@
     "scripts": {
         "test": "@php vendor/bin/phpunit --colors=always",
         "analyse": "@php vendor/bin/phpstan analyse --memory-limit=512M",
+        "bench": "@php benchmarks/generate.php",
         "format": "@php vendor/bin/pint",
         "format:test": "@php vendor/bin/pint --test"
     },

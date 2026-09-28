@@ -86,7 +86,7 @@ final class QrMatrix
     {
         $result = [];
 
-        foreach (range(0, $this->size - 1) as $y) {
+        for ($y = 0; $y < $this->size; $y++) {
             $result[] = array_values($this->modules[$y]);
         }
 

@@ -10,6 +10,11 @@ namespace Fahad\QrCode\Matrix;
  *
  * Only data modules are ever masked or scored; function modules (finder,
  * timing, format) are excluded.
+ *
+ * Scoring reads the grid through a single plain-array snapshot (rows plus a
+ * one-time column transpose) rather than per-module accessor calls: the
+ * penalty rules touch every module several times over, so for large versions
+ * this avoids millions of bounds-checked {@see QrMatrix::get()} calls.
  */
 final class Mask
 {
@@ -41,28 +46,33 @@ final class Mask
      */
     public function score(): int
     {
-        return $this->ruleN1() + $this->ruleN2() + $this->ruleN3() + $this->ruleN4();
+        $rows = $this->matrix->toArray();
+        $columns = $this->transpose($rows);
+
+        return $this->ruleN1($rows, $columns)
+            + $this->ruleN2($rows)
+            + $this->ruleN3($rows, $columns)
+            + $this->ruleN4($rows);
     }
 
     /**
      * N1: runs of five or more same-coloured modules in rows and columns.
+     *
+     * @param  list<list<bool|null>>|null  $rows
+     * @param  list<list<bool|null>>|null  $columns
      */
-    private function ruleN1(): int
+    private function ruleN1(?array $rows = null, ?array $columns = null): int
     {
-        $penalty = 0;
-        $size = $this->matrix->size;
+        $rows ??= $this->matrix->toArray();
+        $columns ??= $this->transpose($rows);
 
-        foreach ($this->matrix->toArray() as $row) {
+        $penalty = 0;
+
+        foreach ($rows as $row) {
             $this->scoreRuns($row, $penalty);
         }
 
-        for ($x = 0; $x < $size; $x++) {
-            $column = [];
-
-            for ($y = 0; $y < $size; $y++) {
-                $column[] = $this->matrix->get($x, $y);
-            }
-
+        foreach ($columns as $column) {
             $this->scoreRuns($column, $penalty);
         }
 
@@ -71,20 +81,24 @@ final class Mask
 
     /**
      * N2: 2×2 blocks of the same colour.
+     *
+     * @param  list<list<bool|null>>|null  $rows
      */
-    private function ruleN2(): int
+    private function ruleN2(?array $rows = null): int
     {
+        $rows ??= $this->matrix->toArray();
+
         $penalty = 0;
-        $size = $this->matrix->size;
+        $size = count($rows);
 
         for ($y = 0; $y < $size - 1; $y++) {
-            for ($x = 0; $x < $size - 1; $x++) {
-                $a = $this->matrix->get($x, $y);
-                $b = $this->matrix->get($x + 1, $y);
-                $c = $this->matrix->get($x, $y + 1);
-                $d = $this->matrix->get($x + 1, $y + 1);
+            $rowA = $rows[$y];
+            $rowB = $rows[$y + 1];
 
-                if ($a === $b && $a === $c && $a === $d) {
+            for ($x = 0; $x < $size - 1; $x++) {
+                $a = $rowA[$x];
+
+                if ($a === $rowA[$x + 1] && $a === $rowB[$x] && $a === $rowB[$x + 1]) {
                     $penalty += 3;
                 }
             }
@@ -95,29 +109,26 @@ final class Mask
 
     /**
      * N3: finder-like patterns (1:1:3:1:1 with light on either side).
+     *
+     * @param  list<list<bool|null>>|null  $rows
+     * @param  list<list<bool|null>>|null  $columns
      */
-    private function ruleN3(): int
+    private function ruleN3(?array $rows = null, ?array $columns = null): int
     {
+        $rows ??= $this->matrix->toArray();
+        $columns ??= $this->transpose($rows);
+
         $penalty = 0;
-        $size = $this->matrix->size;
 
         $pattern = [true, false, true, true, true, false, true, false, false, false, false];
         $reverse = array_reverse($pattern);
 
-        foreach ($this->matrix->toArray() as $row) {
-            $penalty += $this->countPattern($row, $pattern) * 40;
-            $penalty += $this->countPattern($row, $reverse) * 40;
+        foreach ($rows as $line) {
+            $penalty += ($this->countPattern($line, $pattern) + $this->countPattern($line, $reverse)) * 40;
         }
 
-        for ($x = 0; $x < $size; $x++) {
-            $column = [];
-
-            for ($y = 0; $y < $size; $y++) {
-                $column[] = $this->matrix->get($x, $y);
-            }
-
-            $penalty += $this->countPattern($column, $pattern) * 40;
-            $penalty += $this->countPattern($column, $reverse) * 40;
+        foreach ($columns as $line) {
+            $penalty += ($this->countPattern($line, $pattern) + $this->countPattern($line, $reverse)) * 40;
         }
 
         return $penalty;
@@ -125,16 +136,19 @@ final class Mask
 
     /**
      * N4: proportion of dark modules deviating from 50%.
+     *
+     * @param  list<list<bool|null>>|null  $rows
      */
-    private function ruleN4(): int
+    private function ruleN4(?array $rows = null): int
     {
-        $size = $this->matrix->size;
+        $rows ??= $this->matrix->toArray();
+
         $dark = 0;
         $total = 0;
 
-        for ($y = 0; $y < $size; $y++) {
-            for ($x = 0; $x < $size; $x++) {
-                if ($this->matrix->get($x, $y) === true) {
+        foreach ($rows as $row) {
+            foreach ($row as $module) {
+                if ($module === true) {
                     $dark++;
                 }
                 $total++;
@@ -202,5 +216,30 @@ final class Mask
         }
 
         return $count;
+    }
+
+    /**
+     * Transpose a row-major grid into a column-major one, so the rules that
+     * scan columns can read plain arrays instead of per-module accessors.
+     *
+     * @param  list<list<bool|null>>  $rows
+     * @return list<list<bool|null>>
+     */
+    private function transpose(array $rows): array
+    {
+        $columns = [];
+        $size = count($rows);
+
+        for ($x = 0; $x < $size; $x++) {
+            $column = [];
+
+            for ($y = 0; $y < $size; $y++) {
+                $column[] = $rows[$y][$x];
+            }
+
+            $columns[] = $column;
+        }
+
+        return $columns;
     }
 }
